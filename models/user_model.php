@@ -10,33 +10,43 @@ Class User_model extends Model {
 	/**
 	 * create user
 	 *
-	 * @author Waldo
-	 * @since 2015.02.28
+	 * @author benimario
+	 * @since 2015.05.18
 	 *
-	 * @param string
-	 * @param string
-	 * @param string
-	 * @param int
-	 * @param string: url
+	 * @param array(username, email, profile_image_path)
 	 *
 	 * @return bool
 	 */
-	function createUser($email, $name, $password) {
+
+
+    function getUsers() {
+        $sql = '
+            SELECT
+                *
+            FROM
+                users
+        ';
+
+        return $this->query_result($sql, null);
+    }
+
+
+	function createUser($data) {
 		$sql = '
 					INSERT INTO
-						user
-						(
-							user_email,
-							user_name,
-							user_password,
-							regdate
-						)
-					VALUE
-						(
-							?, ?, ?,
-							now()
-						)
+					    users
+					    (
+                            regdate,
+                            modified,
+                            username,
+                            email,
+                            profile_image
+                        )
+                    VALUES (
+                        NOW(), NOW(), ?, ?, ?
+                    )
 				';
-		return $this->query_exec($sql, array($email, $name, $password));
+
+		return $this->query_exec($sql, $data);
 	}
 }
