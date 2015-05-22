@@ -142,4 +142,23 @@ Class User_model extends Model {
 
         return $this->query_exec($sql, $data);
     }
+
+
+    /**
+     * get user by user's uuid
+     *
+     * @param $uid: int
+     */
+    function getUserAuthById($uid) {
+        $sql = '
+            SELECT
+                *
+            FROM
+                user_auth
+            WHERE
+                uid = ?
+        ';
+
+        return $this->query_row($sql, array($uid));
+    }
 }
