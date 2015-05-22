@@ -9,7 +9,6 @@
 
 ?>
 {
-    "error": false,
     "code": 200,
     "message": "success"
 }
