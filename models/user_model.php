@@ -126,6 +126,27 @@ Class User_model extends Model {
 
 
     /**
+     * activate user record
+     *
+     * @param $uid
+     * @param $state
+     * @return boolean
+     */
+    function activateUser($uid, $state) {
+        $sql = '
+            UPDATE
+                users
+            SET
+                active = ?
+            WHERE
+                uuid = ?
+        ';
+
+        return $this->query_exec($sql, array($state, $uid));
+    }
+
+
+    /**
      * create an user_auth record
      *
      * @param $data

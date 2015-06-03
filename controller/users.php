@@ -48,8 +48,11 @@ Class Users extends Controller {
                     /*
                      * edit user active status
                      * admin  only
+                     *
+                     * @post param state: boolean
                      */
                     case 'active':
+                        $this->activateUser($uid);
                         break;
 
 
@@ -58,6 +61,7 @@ Class Users extends Controller {
                      * admin only
                      */
                     case 'level':
+                        $this->levelingUser($uid);
                         break;
 
 
@@ -147,6 +151,8 @@ Class Users extends Controller {
 
     /**
      * get user by uuid
+     *
+     * @echo user object to json string
      */
     function getUserById($uid) {
         $user = $this->user_model->getUserById($uid);
@@ -162,7 +168,7 @@ Class Users extends Controller {
         $response->code = 200;
         $response->data = $data;
 
-        $jsonString = json_encode($user, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $jsonString = json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         echo $jsonString;
     }
@@ -170,6 +176,8 @@ Class Users extends Controller {
 
     /**
      * get all users
+     *
+     * @echo user objects array to json string
      */
     function getUsers() {
         $users = $this->user_model->getUsers();
@@ -193,6 +201,11 @@ Class Users extends Controller {
 
     /**
      * create an user record.
+     *
+     * @post param username: string
+     * @post param email: string
+     * @post param profile_image: string
+     * @post param password: string
      */
     function createUser() {
         // get post values
@@ -228,18 +241,11 @@ Class Users extends Controller {
         }
 
         // email verification
-        $verificationResult = $this->verifyEmail($email);
+        $verificationResult = $this->verifyEmail($email, true);
 
         // verification fail. return error response
         if($verificationResult != 'success') {
             $message = $verificationResult;
-            require 'views/error.php';
-            return;
-        }
-
-        $user = $this->user_model->getUserByEmail($email);
-        if($user) {
-            $message = '동일한 이메일 주소가 존재합니다.';
             require 'views/error.php';
             return;
         }
@@ -278,6 +284,12 @@ Class Users extends Controller {
      * admin or user self only
      *
      * @param $uid
+     *
+     * @post param userData: json string{
+     *      username: string
+     *      email: string
+     *      profile_image: string
+     * }
      */
     function updateUser($uid) {
         if(!$this->validatePermission()) {
@@ -295,8 +307,8 @@ Class Users extends Controller {
         $userData = json_decode($_REQUEST['userData']);
 
         // json format error
-        if(!$userData || !$this->verifyUserData($userData)) {
-            $message = '필드 수가 맞지 않습니다.';
+        if(!$userData) {
+            $message = '형식 오류';
             require 'views/error.php';
             return;
         }
@@ -317,8 +329,19 @@ Class Users extends Controller {
             return;
         }
 
+        if(!isset($userData->username)) {
+            $userData->username = $user->username;
+        }
+        if(!isset($userData->email)) {
+            $userData->email = $user->email;
+        }
+        if(!isset($userData->profile_image)) {
+            $userData->profile_image = $user->profile_image;
+        }
+
         // email verification
         $verificationResult = $this->verifyEmail($userData->email);
+
         if($verificationResult != 'success') {
             $message = $verificationResult;
             require 'views/error.php';
@@ -344,12 +367,115 @@ Class Users extends Controller {
 
 
     /**
+     * activate user record
+     * admin only
+     *
+     * @param $uid
+     *
+     * @post param state: boolean
+     */
+    function activateUser($uid) {
+        if(!$this->isAdmin()) {
+            $message = '권한이 없습니다.';
+            require 'views/error.php';
+        }
+
+        $user = $this->user_model->getUserById($uid);
+
+        if(!$user) {
+            $message = '회원 정보가 존재하지 않습니다.';
+            require('views/error.php');
+        }
+        else {
+            $state = $_POST['state'];
+
+            if($state == 'true') {
+                $state = 1;
+            }
+            else if($state == 'false') {
+                $state = 0;
+            }
+            else {
+                $message = '올바르지 않은 값입니다.';
+                require 'views/error.php';
+                return;
+            }
+
+            $result = $this->user_model->activateUser($uid, $state);
+
+            if($result) {
+                require 'views/success.php';
+            }
+            else {
+                $message = '회원 활성상태 수정 중 오류가 발생하였습니다.';
+                require 'views/error.php';
+            }
+        }
+
+        return;
+    }
+
+
+    /**
+     * edit user level
+     * admin only
+     *
+     * @param $uid
+     *
+     * @post param level: short
+     */
+    function levelingUser($uid) {
+        if(!$this->isAdmin()) {
+            $message = '권한이 없습니다.';
+            require 'views/error.php';
+        }
+
+        $user = $this->user_model->getUserById($uid);
+
+        if(!$user) {
+            $message = '회원 정보가 존재하지 않습니다.';
+            require('views/error.php');
+        }
+        else {
+            $level = $_POST['level'];
+
+            if(!filter_var($level, FILTER_VALIDATE_INT)) {
+                $message = '올바르지 않은 값입니다.';
+                require 'views/error.php';
+                return;
+            }
+
+            $result = $this->user_model->levelingUser($uid, $level);
+
+            if($result) {
+                require 'views/success.php';
+            }
+            else {
+                $message = '회원 레벨 수정 중 오류가 발생하였습니다.';
+                require 'views/error.php';
+            }
+        }
+    }
+
+
+    /**
      * verify email address
      *
      * @param $email
+     * @param $new: boolean - is new user or not
      * @return string
      */
-    function verifyEmail($email) {
+    function verifyEmail($email, $new=false) {
+        if(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return '이메일 형식이 맞지 않습니다.';
+        }
+
+        if($new) {
+            $user = $this->user_model->getUserByEmail($email);
+            if ($user) {
+                return '동일한 이메일 주소가 존재합니다.';
+            }
+        }
 
         return 'success';
     }
@@ -360,18 +486,18 @@ Class Users extends Controller {
      * else return false
      */
     function validatePermission() {
-        return (isset($_SESSION['is_logged']) && $_SESSION['is_logged']) ||
-               (isset($_SESSION['is_admin']) && $_SESSION['is_admin']);
+        return (isset($_SESSION['is_logged']) && $_SESSION['is_logged'])
+               || (isset($_SESSION['is_admin']) && $_SESSION['is_admin']);
     }
 
 
     /**
-     * verify fields in userData
-     * 
-     * @param $userData
+     * return true if admin user
+     *
      * @return bool
      */
-    function verifyUserData($userData) {
+    function isAdmin() {
         return true;
+        return (isset($_SESSION['is_admin']) && $_SESSION['is_admin']);
     }
 }
