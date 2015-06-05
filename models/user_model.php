@@ -1,6 +1,13 @@
 <?php
 if (!defined("__BAAS_API__")) exit;
 
+
+/**
+ * Class User_model
+ *
+ * Manipulate CRUD for User Entity
+ *
+ */
 Class User_model extends Model {
 	function __construct($db) {
 		parent::__construct($db);

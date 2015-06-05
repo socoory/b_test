@@ -1,6 +1,5 @@
 <?php
 /**
- * Created by PhpStorm.
  * User: benimario
  * Date: 15. 5. 19.
  * Time: 오후 10:02
@@ -22,6 +21,7 @@ Class Users extends Controller {
     {
         parent::__construct();
         $this->user_model = $this->loadModel('user_model');
+        $this->logdata_model = $this->loadModel('logdata_model');
     }
 
 
@@ -196,6 +196,8 @@ Class Users extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         echo $jsonString;
+
+        $this->logdata_model->log('user', 'get users');
     }
 
 

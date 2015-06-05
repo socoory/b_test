@@ -73,6 +73,7 @@ Class Auth extends Controller {
         if(!$user) {
             $message = '사용자 정보가 존재하지 않습니다.';
             require 'views/error.php';
+            return;
         }
 
         $userAuth = $this->user_model->getUserAuthById($user->uuid);
@@ -103,7 +104,7 @@ Class Auth extends Controller {
     function signout() {
         $_SESSION['is_logged'] = false;
         session_destroy();
-        
+
         require 'views/success.php';
     }
 
