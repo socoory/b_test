@@ -126,9 +126,50 @@ Class User_model extends Model {
                 username = ?,
                 email = ?,
                 profile_image = ?
+            WHERE
+                uuid = ?
         ';
 
         return $this->query_exec($sql, $userData);
+    }
+
+
+    /**
+     * update an user record (level)
+     *
+     * @param $uid: int
+     * @param $level: int
+     * @return boolean
+     */
+    function levelingUser($uid, $level) {
+        $sql = '
+            UPDATE
+                users
+            SET
+                modified = NOW(),
+                level = ?
+            WHERE
+                uuid = ?
+        ';
+
+        return $this->query_exec($sql, array($level, $uid));
+    }
+
+
+    /**
+     * delete an user record
+     *
+     * @param $uid
+     * @return boolean
+     */
+    function deleteUser($uid) {
+        $sql = '
+            DELETE FROM
+                users
+            WHERE uuid = ?
+        ';
+
+        return $this->query_exec($sql, array($uid));
     }
 
 

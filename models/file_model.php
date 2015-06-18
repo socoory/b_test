@@ -78,64 +78,41 @@ Class File_model extends Model {
 
 
     /**
-     * create a data record
+     * create a file record
      *
      * @param $user_id: int
-     * @param $data: string
+     * @param $path: string
      * @return boolean
      *
      */
-	function createData($user_id, $data) {
+	function createFile($user_id, $path) {
 		$sql = '
             INSERT INTO
-                data
+                files
                 (
                     regdate,
-                    modified,
-                    data,
+                    path,
                     user_id
                 )
             VALUES (
-                NOW(), NOW(), ?, ?
+                NOW(), ?, ?
             )
         ';
 
-		return $this->query_exec($sql, array($data, $user_id));
+		return $this->query_exec($sql, array($path, $user_id));
 	}
 
 
     /**
-     * update an data record
-     *
-     * @param $uuid: int
-     * @para $data: string
-     * @return boolean
-     */
-    function updateData($uuid, $data) {
-        $sql = '
-            UPDATE
-                data
-            SET
-                modified = NOW(),
-                data = ?
-            WHERE
-                uuid = ?
-        ';
-
-        return $this->query_exec($sql, array($data, $uuid));
-    }
-
-
-    /**
-     * delete an data record
+     * delete an file record
      *
      * @param $uuid: int
      * @return boolean
      */
-    function deleteData($uuid) {
+    function deleteFile($uuid) {
         $sql = '
             DELETE FROM
-                data
+                files
             WHERE
                 uuid = ?
         ';
@@ -145,109 +122,23 @@ Class File_model extends Model {
 
 
     /**
-     * get data from to
+     * get files by data id
      *
-     * @param $from: int
-     * @param $to: int
-     * @param $user_id: int
-     * @return data object array
+     * @param $data_id
+     * @return file object array
      */
-    function getDataByLimitWithUserId($from, $to, $user_id) {
+    function getFilesByDataId($data_id) {
         $sql = '
             SELECT
                 *
             FROM
-                data
+                files
             WHERE
-                user_id = ?
-            ORDER BY
-                uuid DESC
-            LIMIT
-                '.$from.', '.$to.'
-        ';
-
-        return $this->query_result($sql, array($user_id));
-    }
-
-
-    /**
-     * get data on date
-     *
-     * @param $date: date format string (yymmdd)
-     * @return data object array
-     */
-    function getDataByDateWithUserId($date, $user_id) {
-        $sql = '
-            SELECT
-                *
-            FROM
-                data
-            WHERE
-                user_id = ? AND
-                DATE(regdate) = DATE(?)
+                data_id = ?
             ORDER BY
                 uuid DESC
         ';
 
-        return $this->query_result($sql, array($user_id, $date));
-    }
-
-
-    /**
-     * activate user record
-     *
-     * @param $uid
-     * @param $state
-     * @return boolean
-     */
-    function activateUser($uid, $state) {
-        $sql = '
-            UPDATE
-                users
-            SET
-                active = ?
-            WHERE
-                uuid = ?
-        ';
-
-        return $this->query_exec($sql, array($state, $uid));
-    }
-
-
-    /**
-     * create an user_auth record
-     *
-     * @param $data
-     * @return boolean
-     */
-    function createUserAuth($data) {
-        $sql = '
-            INSERT INTO
-                user_auth
-            VALUES (
-                ?, ?
-            )
-        ';
-
-        return $this->query_exec($sql, $data);
-    }
-
-
-    /**
-     * get user by user's uuid
-     *
-     * @param $uid: int
-     */
-    function getUserAuthById($uid) {
-        $sql = '
-            SELECT
-                *
-            FROM
-                user_auth
-            WHERE
-                uid = ?
-        ';
-
-        return $this->query_row($sql, array($uid));
+        return $this->query_result($sql, array($data_id));
     }
 }

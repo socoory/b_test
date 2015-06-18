@@ -106,7 +106,7 @@ Class Users extends Controller {
                      * admin or userself only
                      */
                     case 'DELETE':
-                        echo 'delete';
+                        $this->deleteUser($uid);
                         break;
                 }
             }
@@ -171,6 +171,13 @@ Class Users extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         echo $jsonString;
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'get user by user id',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -197,7 +204,12 @@ Class Users extends Controller {
 
         echo $jsonString;
 
-        $this->logdata_model->log('user', 'get users');
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'get users',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -211,6 +223,12 @@ Class Users extends Controller {
      */
     function createUser() {
         // get post values
+        $postData = json_decode(file_get_contents('php://input'));
+
+        if($postData != null) {
+            $_POST = get_object_vars($postData);
+        }
+
         if(isset($_POST['username'])) {
             $username = strip_tags($_POST['username']);
         }
@@ -267,6 +285,7 @@ Class Users extends Controller {
         else {
             $message = '회원 등록 중 오류가 발생하였습니다.';
             require 'views/error.php';
+            return;
         }
 
         $user = $this->user_model->getUserByEmail($email);
@@ -278,6 +297,15 @@ Class Users extends Controller {
                 password_hash($password, PASSWORD_BCRYPT)
             )
         );
+
+        $target_id = $this->user_model->insertId();
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'create user',
+            'attr' => null,
+            'target_id' => $target_id
+        ));
     }
 
 
@@ -300,19 +328,10 @@ Class Users extends Controller {
             return;
         }
 
-        if(isset($_POST['userData'])) {
-            $message = '잘못된 요청입니다.';
-            require 'views/error.php';
-            return;
-        }
+        $data = json_decode(file_get_contents('php://input'));
 
-        $userData = json_decode($_REQUEST['userData']);
-
-        // json format error
-        if(!$userData) {
-            $message = '형식 오류';
-            require 'views/error.php';
-            return;
+        if($data != null) {
+            $_REQUEST = get_object_vars($data);
         }
 
         $user = $this->user_model->getUserById($uid);
@@ -331,18 +350,18 @@ Class Users extends Controller {
             return;
         }
 
-        if(!isset($userData->username)) {
-            $userData->username = $user->username;
+        if(!isset($_REQUEST['username'])) {
+            $_REQUEST['username'] = $user->username;
         }
-        if(!isset($userData->email)) {
-            $userData->email = $user->email;
+        if(!isset($_REQUEST['email'])) {
+            $_REQUEST['email'] = $user->email;
         }
-        if(!isset($userData->profile_image)) {
-            $userData->profile_image = $user->profile_image;
+        if(!isset($_REQUEST['profile_image'])) {
+            $_REQUEST['profile_image'] = $user->profile_image;
         }
 
         // email verification
-        $verificationResult = $this->verifyEmail($userData->email);
+        $verificationResult = $this->verifyEmail($_REQUEST['email']);
 
         if($verificationResult != 'success') {
             $message = $verificationResult;
@@ -352,9 +371,10 @@ Class Users extends Controller {
 
         $result = $this->user_model->updateUser(
             array(
-                $userData->username,
-                $userData->email,
-                $userData->profile_image
+                $_REQUEST['username'],
+                $_REQUEST['email'],
+                $_REQUEST['profile_image'],
+                $uid
             )
         );
 
@@ -365,6 +385,47 @@ Class Users extends Controller {
             $message = '회원 정보 수정 중 오류가 발생하였습니다.';
             require 'views/error.php';
         }
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'update user',
+            'attr' => null,
+            'target_id' => $uid
+        ));
+    }
+
+
+    /**
+     * delete an user record
+     * by admin or userself only
+     *
+     * @param $uid: int
+     */
+    function deleteUser($uid) {
+        $user = $this->user_model->getUserById($uid);
+
+        if(!($this->isAdmin() || (isset($_SESSION['uid']) && $user->uuid == $_SESSION['uid']))) {
+            $message = '권한이 없습니다.';
+            require 'views/error.php';
+            return;
+        }
+
+        $result = $this->user_model->deleteUser($uid);
+
+        if(!$result) {
+            $message = '회원 정보 삭제 중 오류가 발생하였습니다.';
+            require 'views/error.php';
+            return;
+        }
+
+        require 'views/success.php';
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'delete user',
+            'attr' => null,
+            'target_id' => $uid
+        ));
     }
 
 
@@ -389,6 +450,18 @@ Class Users extends Controller {
             require('views/error.php');
         }
         else {
+            $data = json_decode(file_get_contents('php://input'));
+
+            if($data != null) {
+                $_POST = get_object_vars($data);
+            }
+
+            if(!isset($_POST['state'])) {
+                $message = '상태 값이 전송되지 않았습니다.';
+                require 'views/error.php';
+                return;
+            }
+
             $state = $_POST['state'];
 
             if($state == 'true') {
@@ -413,6 +486,13 @@ Class Users extends Controller {
                 require 'views/error.php';
             }
         }
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'activate user',
+            'attr' => 'active',
+            'target_id' => $uid
+        ));
 
         return;
     }
@@ -439,6 +519,18 @@ Class Users extends Controller {
             require('views/error.php');
         }
         else {
+            $data = json_decode(file_get_contents('php://input'));
+
+            if($data != null) {
+                $_POST = get_object_vars($data);
+            }
+
+            if(!isset($_POST['level'])) {
+                $message = '레벨 값이 존재하지 않습니다.';
+                require 'views/error.php';
+                return;
+            }
+
             $level = $_POST['level'];
 
             if(!filter_var($level, FILTER_VALIDATE_INT)) {
@@ -457,6 +549,13 @@ Class Users extends Controller {
                 require 'views/error.php';
             }
         }
+
+        $this->logdata_model->log(array(
+            'api_name' => 'user',
+            'action' => 'leveling user',
+            'attr' => 'level',
+            'target_id' => $uid
+        ));
     }
 
 

@@ -30,6 +30,12 @@ Class Auth extends Controller {
      * @param $action: string
      */
     function index($action=null) {
+        $data = json_decode(file_get_contents('php://input'));
+
+        if($data != null) {
+            $_POST = get_object_vars($data);
+        }
+        
         switch($action) {
             case 'get':
                 $this->getUserSession();

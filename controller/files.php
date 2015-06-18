@@ -15,7 +15,8 @@ if (!defined("__BAAS_API__")) exit;
  *
  */
 Class Files extends Controller {
-    private $user_model = null;
+    private $file_model = null;
+    private $logdata_model = null;
 
 
     function __construct()
@@ -43,55 +44,22 @@ Class Files extends Controller {
                 case 'uuid':
                     switch($_SERVER['REQUEST_METHOD']) {
                         /*
-                         * update a data record
+                         * update a file record
                          * param $uuid: int
                          */
                         case 'PUT':
                             $uuid = $first;
-                            $this->updateData($uuid);
+                            $this->updateFile($uuid);
                             break;
 
 
                         /*
-                         * delete a data record
+                         * delete a file record
                          * param $uuid: int
                          */
                         case 'DELETE':
                             $uuid = $first;
-                            $this->deleteData($uuid);
-                            break;
-
-
-                        default:
-                            $message = '허용되지 않은 메소드입니다.';
-                            require 'views/error.php';
-                            break;
-                    }
-                    break;
-
-
-                case 'limit':
-                    switch($_SERVER['REQUEST_METHOD']) {
-                        case 'GET':
-                            $from = $first;
-                            $to = $second;
-                            $this->getDataByLimit($from, $to);
-                            break;
-
-
-                        default:
-                            $message = '허용되지 않은 메소드입니다.';
-                            require 'views/error.php';
-                            break;
-                    }
-                    break;
-
-
-                case 'date':
-                    switch($_SERVER['REQUEST_METHOD']) {
-                        case 'GET':
-                            $date = $first;
-                            $this->getDataByDate($date);
+                            $this->deleteFile($uuid);
                             break;
 
 
@@ -106,8 +74,12 @@ Class Files extends Controller {
                 case 'user':
                     switch($_SERVER['REQUEST_METHOD']) {
                         case 'GET':
-                            $user_id = $first;
-                            $this->getDataByUserId($user_id);
+                            if($first) {
+                                $this->getFilesByUserId($first);
+                            }
+                            else {
+                                $this->getFilesByUserId($_SESSION['uid']);
+                            }
                             break;
 
 
@@ -116,6 +88,27 @@ Class Files extends Controller {
                             require 'views/error.php';
                             break;
                     }
+                    break;
+
+
+                case 'data':
+                    switch($_SERVER['REQUEST_METHOD']) {
+                        case 'GET':
+                            $data_id = $first;
+                            $this->getFilesByDataId($data_id);
+                            break;
+
+
+                        default:
+                            $message = '허용되지 않은 메소드입니다.';
+                            require 'views/error.php';
+                            break;
+                    }
+                    break;
+
+
+                default:
+                    require 'views/404.php';
                     break;
             }
         }
@@ -171,6 +164,13 @@ Class Files extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         echo $jsonString;
+
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'get files',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -201,11 +201,18 @@ Class Files extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         echo $jsonString;
+
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'get files by user id',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
     /**
-     * create a data record
+     * create a file record
      */
     function createFile() {
         if(!$this->validatePermission()) {
@@ -215,7 +222,14 @@ Class Files extends Controller {
         }
 
         $file = null;
+        $filename = null;
         $attach = 0;
+
+        $data = json_decode(file_get_contents('php://input'));
+
+        if($data != null) {
+            $_POST = get_object_vars($data);
+        }
 
         if(!isset($_POST['file'])) {
             $message = '파일이 전송되지 않았습니다.';
@@ -228,7 +242,68 @@ Class Files extends Controller {
         }
 
         $file = $_POST['file'];
-        $res = $this->file_model->createFile($_SESSION['uid'], $file, $attach);
+
+        $image = $file;
+        $image = str_replace('data:image/', '', $image);
+        $imageType = explode(';', $image);
+        $image = str_replace($imageType[0].';base64','',$image);
+        $image = str_replace(' ', '+', $image);
+        $image = base64_decode($image);
+
+        $uploaddir = 'uploads/';
+
+        $username = '';
+        if(isset($_SESSION['username'])) {
+            $username = $_SESSION['username'];
+        }
+        $fileName 	 = time().sha1($username);
+        $fileName 	 = $fileName.'.'.$imageType[0];
+        $uploadFile  = $uploaddir . $fileName;
+        $thumb		 = null;
+
+        if(file_put_contents($uploadFile, $image)) {
+//            list($w,$h, $type) = getimagesize($uploadFile);
+//
+//            // jpeg orientation
+//            if($type == 2) {
+//                $exif = exif_read_data($uploadFile);
+//                if(isset($exif['Orientation'])) {
+//                    $img = imagecreatefromjpeg($uploadFile);
+//                    switch($exif['Orientation']) {
+//                        case 6: // rotate 90 degrees CW
+//                            $img = imagerotate($img, -90, 0);
+//                            break;
+//                        case 8: // rotate 90 degrees CCW
+//                            $img = imagerotate($img, 90, 0);
+//                            break;
+//                    }
+//                    imagejpeg($img, $uploadFile);
+//                }
+//            }
+//
+//            list($w,$h, $type) = getimagesize($uploadFile);
+//            if($w > 900) {
+//                resizeImage($uploadFile);
+//            }
+//
+//            list($w,$h, $type) = getimagesize($uploadFile);
+//            if($w > 512 || $h > 512) {
+//                $thumb = createThumb($uploaddir, $fileName, 512, round((512/$w)*$h), FALSE);
+//                $uploadfile = $thumb;
+//            }
+//            else {
+//                copy($uploadFile, $uploaddir.'thumb_512x512_'.$fileName);
+//            }
+        }
+        else {
+            $message = '파일 전송 중 오류가 발생하였습니다.';
+            require 'views/error.php';
+            return;
+        }
+
+        $res = $this->file_model->createFile($_SESSION['uid'], $uploadFile, $attach);
+
+        $target_id = $this->file_model->insertId();
 
         if(!$res) {
             $message = '파일 저장 중 오류가 발생하였습니다.';
@@ -236,26 +311,39 @@ Class Files extends Controller {
             return;
         }
 
-        require 'views/success.php';
+        $response = new stdClass();
+        $response->code = 200;
+        $response->message = 'success';
+        $response->id = $target_id;
+        $response->path = $uploadFile;
+
+        echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'upload image',
+            'attr' => null,
+            'target_id' => $target_id
+        ));
     }
 
 
     /**
-     * update a data record
+     * update a file record
      *
      * @param $uuid: int
      */
-    function updateData($uuid) {
+    function updateFile($uuid) {
         if(!$this->validatePermission()) {
             $message = '권한이 없습니다.';
             require 'views/error.php';
             return;
         }
 
-        $data = $this->file_model->getDataById($uuid);
+        $data = $this->file_model->getFileById($uuid);
 
         if(!$data) {
-            $message = '존재하지 않는 데이터입니다.';
+            $message = '존재하지 않는 파일입니다.';
             require 'views/error.php';
             return;
         }
@@ -266,42 +354,57 @@ Class Files extends Controller {
             return;
         }
 
-        $modifiedData = $_REQUEST['data'];
+        $data = json_decode(file_get_contents('php://input'));
+
+        if($data != null) {
+            $_REQUEST = get_object_vars($data);
+        }
+
+        $modifiedData = $_REQUEST['file'];
 
         if(!$modifiedData) {
-            $message = '저장될 데이터가 없습니다.';
+            $message = '저장될 파일이 없습니다.';
             require 'views/error.php';
             return;
         }
 
-        $res = $this->file_model->updateData($uuid, $modifiedData);
+        $dir = $data->path;
 
-        if(!$res) {
-            $message = '데이터 수정 중 오류가 발생하였습니다.';
+        if(file_put_contents($dir, $modifiedData)) {
+        }
+        else {
+            $message = '파일 수정 중 오류가 발생하였습니다.';
             require 'views/error.php';
             return;
         }
 
         require 'views/success.php';
+
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'update file',
+            'attr' => null,
+            'target_id' => $uuid
+        ));
     }
 
 
     /**
-     * delete a data record
+     * delete a file record
      *
      * @param $uuid: int
      */
-    function deleteData($uuid) {
+    function deleteFile($uuid) {
         if(!$this->validatePermission()) {
             $message = '권한이 없습니다.';
             require 'views/error.php';
             return;
         }
 
-        $data = $this->file_model->getDataById($uuid);
+        $data = $this->file_model->getFileById($uuid);
 
         if(!$data) {
-            $message = '존재하지 않는 데이터입니다.';
+            $message = '존재하지 않는 파일입니다.';
             require 'views/error.php';
             return;
         }
@@ -312,7 +415,7 @@ Class Files extends Controller {
             return;
         }
 
-        $res = $this->file_model->deleteData($uuid);
+        $res = $this->file_model->deleteFile($uuid);
 
         if(!$res) {
             $message = '데이터 삭제 중 오류가 발생하였습니다.';
@@ -321,53 +424,41 @@ Class Files extends Controller {
         }
 
         require 'views/success.php';
+
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'delete file',
+            'attr' => null,
+            'target_id' => $uuid
+        ));
     }
 
 
-    /**
-     * get data from to
-     *
-     * @param $from
-     * @param $to
-     */
-    function getDataByLimit($from, $to) {
+    function getFilesByDataId($data_id) {
         if(!$this->validatePermission()) {
             $message = '권한이 없습니다.';
             require 'views/error.php';
             return;
         }
 
-        $data = $this->file_model->getDataByLimitWithUserId($from, $to, $_SESSION['uid']);
+        $files = $this->file_model->getFilesByDataId($data_id);
+
 
         $response = new stdClass();
+
         $response->code = 200;
-        $response->data = $data;
+        $response->data = $files;
 
-        echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    }
+        $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
+        echo $jsonString;
 
-    /**
-     * get data on date
-     *
-     * @param $date: date format string (yymmdd)
-     */
-    function getDataByDate($date) {
-        if(!$this->validatePermission()) {
-            $message = '권한이 없습니다.';
-            require 'views/error.php';
-            return;
-        }
-
-        $date = date ("Y-m-d H:i:s", strtotime('20'.$date));
-
-        $data = $this->file_model->getDataByDateWithUserId($date, $_SESSION['uid']);
-
-        $response = new stdClass();
-        $response->code = 200;
-        $response->data = $data;
-
-        echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $this->logdata_model->log(array(
+            'api_name' => 'file',
+            'action' => 'get files by data id',
+            'attr' => null,
+            'target_id' => $data_id
+        ));
     }
 
 

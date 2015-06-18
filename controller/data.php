@@ -47,6 +47,11 @@ Class Data extends Controller {
                          * param $uuid: int
                          */
                         case 'PUT':
+                            $data = json_decode(file_get_contents('php://input'));
+
+                            if($data != null) {
+                                $_REQUEST = get_object_vars($data);
+                            }
                             $uuid = $first;
                             $this->updateData($uuid);
                             break;
@@ -138,6 +143,11 @@ Class Data extends Controller {
                  * post params: data
                  */
                 case 'POST':
+                    $data = json_decode(file_get_contents('php://input'));
+
+                    if($data != null) {
+                        $_POST = get_object_vars($data);
+                    }
                     $this->createData();
                     break;
 
@@ -171,6 +181,13 @@ Class Data extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         echo $jsonString;
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'get data',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -201,6 +218,13 @@ Class Data extends Controller {
         $jsonString = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         echo $jsonString;
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'get data by user id',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -231,6 +255,15 @@ Class Data extends Controller {
         }
 
         require 'views/success.php';
+
+        $target_id = $this->data_model->insertId();
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'create data',
+            'attr' => null,
+            'target_id' => $target_id
+        ));
     }
 
 
@@ -277,6 +310,13 @@ Class Data extends Controller {
         }
 
         require 'views/success.php';
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'update data',
+            'attr' => null,
+            'target_id' => $uuid
+        ));
     }
 
 
@@ -315,6 +355,13 @@ Class Data extends Controller {
         }
 
         require 'views/success.php';
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'delete data',
+            'attr' => null,
+            'target_id' => $uuid
+        ));
     }
 
 
@@ -338,6 +385,13 @@ Class Data extends Controller {
         $response->data = $data;
 
         echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'get data using limit',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 
@@ -362,6 +416,13 @@ Class Data extends Controller {
         $response->data = $data;
 
         echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $this->logdata_model->log(array(
+            'api_name' => 'data',
+            'action' => 'get data using date',
+            'attr' => null,
+            'target_id' => null
+        ));
     }
 
 

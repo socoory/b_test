@@ -9,7 +9,7 @@
 
 ?>
 {
-    "code": 404,
+    "code": "404",
     "error": true,
     "message": "잘못된 요청입니다."
 }
